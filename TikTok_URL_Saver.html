@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>TikTok URL Saver</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f7;
+    color: #111;
+  }
+  header {
+    padding: calc(18px + env(safe-area-inset-top)) 20px 18px;
+    background: white;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  h1 { margin: 0; font-size: 25px; }
+  main { max-width: 700px; margin: auto; padding: 20px 16px 40px; }
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  label { display:block; font-weight:600; margin: 0 0 7px; }
+  input[type="text"], input[type="url"] {
+    width:100%;
+    padding:13px 12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:16px;
+    margin-bottom:15px;
+  }
+  input[type="file"] { width:100%; margin-bottom:15px; }
+  button {
+    border:0;
+    border-radius:11px;
+    padding:13px 17px;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .save { width:100%; background:#111; color:white; }
+  .item {
+    display:flex;
+    gap:12px;
+    align-items:center;
+    border-top:1px solid #eee;
+    padding:13px 0;
+  }
+  .item:first-child { border-top:0; }
+  .thumb {
+    width:70px; height:70px; object-fit:cover;
+    border-radius:10px; background:#eee; flex:none;
+  }
+  .info { min-width:0; flex:1; }
+  .name { font-weight:700; margin-bottom:5px; word-break:break-word; }
+  .url {
+    color:#666; font-size:13px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .actions { display:flex; gap:7px; margin-top:9px; }
+  .open { background:#eee; }
+  .delete { background:#ffe5e5; color:#a00000; }
+  .empty { color:#666; text-align:center; padding:15px 0; }
+  .note { color:#666; font-size:13px; line-height:1.4; margin-top:8px; }
+</style>
+</head>
+<body>
+<header><h1>TikTok URL Saver</h1></header>
+
+<main>
+  <section class="card">
+    <label for="name">Video Name</label>
+    <input id="name" type="text" placeholder="Enter video name">
+
+    <label for="url">TikTok URL</label>
+    <input id="url" type="url" inputmode="url" placeholder="Paste TikTok URL here">
+
+    <label for="photo">Photo</label>
+    <input id="photo" type="file" accept="image/*">
+    <div class="note">Choose the photo you saved manually from TikTok.</div>
+
+    <br>
+    <button class="save" id="saveBtn">Save</button>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-top:0">Saved Videos</h2>
+    <div id="list"></div>
+  </section>
+</main>
+
+<script>
+const KEY = "tiktok_url_saver_v1";
+const nameInput = document.getElementById("name");
+const urlInput = document.getElementById("url");
+const photoInput = document.getElementById("photo");
+const list = document.getElementById("list");
+
+function getItems() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function saveItems(items) {
+  localStorage.setItem(KEY, JSON.stringify(items));
+}
+
+function render() {
+  const items = getItems();
+  list.innerHTML = "";
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">No videos saved yet.</div>';
+    return;
+  }
+
+  items.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = "item";
+
+    if (item.photo) {
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.src = item.photo;
+      img.alt = "";
+      row.appendChild(img);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "thumb";
+      row.appendChild(placeholder);
+    }
+
+    const info = document.createElement("div");
+    info.className = "info";
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = item.name;
+
+    const url = document.createElement("div");
+    url.className = "url";
+    url.textContent = item.url;
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+
+    const open = document.createElement("button");
+    open.className = "open";
+    open.textContent = "Open";
+    open.onclick = () => window.open(item.url, "_blank");
+
+    const del = document.createElement("button");
+    del.className = "delete";
+    del.textContent = "Delete";
+    del.onclick = () => {
+      if (confirm("Delete this saved video?")) {
+        const current = getItems();
+        current.splice(index, 1);
+        saveItems(current);
+        render();
+      }
+    };
+
+    actions.append(open, del);
+    info.append(name, url, actions);
+    row.appendChild(info);
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("saveBtn").onclick = () => {
+  const name = nameInput.value.trim();
+  const url = urlInput.value.trim();
+
+  if (!name) {
+    alert("Please enter a video name.");
+    nameInput.focus();
+    return;
+  }
+
+  if (!url) {
+    alert("Please paste the TikTok URL.");
+    urlInput.focus();
+    return;
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    alert("Please enter a complete URL beginning with https://");
+    urlInput.focus();
+    return;
+  }
+
+  const file = photoInput.files[0];
+
+  const finish = (photoData) => {
+    const items = getItems();
+    items.unshift({ name, url, photo: photoData || "" });
+
+    try {
+      saveItems(items);
+    } catch(e) {
+      alert("The photo is too large for this browser's local storage. Please use a smaller photo.");
+      return;
+    }
+
+    nameInput.value = "";
+    urlInput.value = "";
+    photoInput.value = "";
+    render();
+  };
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = () => finish(reader.result);
+    reader.readAsDataURL(file);
+  } else {
+    finish("");
+  }
+};
+
+render();
+</script>
+</body>
+</html>
